@@ -8,6 +8,7 @@ import {
   HandCoins,
   LayoutDashboard,
   LineChart,
+  LogOut,
   Plus,
   Search,
   Settings,
@@ -17,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { signOut } from "@/app/auth/actions";
 
 type NavItem = {
   href: string;
@@ -50,7 +52,11 @@ function isActive(pathname: string, href: string) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const hideShell = pathname.startsWith("/expense/new");
+  const hideShell =
+    pathname.startsWith("/expense/new") ||
+    pathname.startsWith("/accounts/new") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup");
 
   if (hideShell) {
     return <>{children}</>;
@@ -127,6 +133,15 @@ function Sidebar({ pathname }: { pathname: string }) {
             <p className="text-sm font-medium leading-tight">Мирзахит</p>
             <p className="text-[11px] text-text-muted leading-tight">+ Лейла</p>
           </div>
+          <form action={signOut}>
+            <button
+              type="submit"
+              aria-label="Выйти"
+              className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-text-secondary"
+            >
+              <LogOut className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </form>
         </div>
       </div>
     </aside>

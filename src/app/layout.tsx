@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { StoreProvider } from "@/lib/store";
 import { AppShell } from "@/components/AppShell";
 
 const inter = Inter({
@@ -30,9 +29,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-bg-base text-text-primary">
-        <StoreProvider>
-          <AppShell>{children}</AppShell>
-        </StoreProvider>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
