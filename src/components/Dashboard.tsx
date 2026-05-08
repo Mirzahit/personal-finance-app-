@@ -4,6 +4,13 @@ import { motion } from "framer-motion";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  BookOpen,
+  Car,
+  Gift,
+  HandCoins,
+  Heart,
+  Home,
+  Plane,
   ShoppingBag,
   Target,
   Utensils,
@@ -38,6 +45,13 @@ const txIconMap: Record<string, LucideIcon> = {
   "arrow-down-right": ArrowDownRight,
   target: Target,
   wallet: Wallet,
+  car: Car,
+  home: Home,
+  heart: Heart,
+  gift: Gift,
+  "book-open": BookOpen,
+  plane: Plane,
+  "hand-coins": HandCoins,
 };
 
 function fromMinor(minor: number) {
@@ -230,18 +244,39 @@ function Envelopes({ envelopes }: { envelopes: DbEnvelope[] }) {
   if (envelopes.length === 0) {
     return (
       <section className="h-full">
-        <SectionHeader title="Конверты" />
-        <div className="rounded-[18px] border border-dashed border-border-default bg-bg-elevated/40 px-5 py-8 text-center text-sm text-text-secondary">
-          Конверты — это лимиты по категориям внутри счёта.
-          <br />
-          Добавим позже.
-        </div>
+        <SectionHeader
+          title="Конверты"
+          action={
+            <Link
+              href="/envelopes/new"
+              className="rounded-full border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-card"
+            >
+              + Конверт
+            </Link>
+          }
+        />
+        <Link
+          href="/envelopes/new"
+          className="block rounded-[18px] border border-dashed border-border-default bg-bg-elevated/40 px-5 py-8 text-center text-sm text-text-secondary transition-colors hover:bg-bg-elevated"
+        >
+          Создай первый конверт — лимит по категории на месяц
+        </Link>
       </section>
     );
   }
   return (
     <section className="h-full">
-      <SectionHeader title="Конверты" />
+      <SectionHeader
+        title="Конверты"
+        action={
+          <Link
+            href="/envelopes/new"
+            className="rounded-full border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-card"
+          >
+            + Конверт
+          </Link>
+        }
+      />
       <div className="flex flex-col gap-2.5">
         {envelopes.map((e, i) => {
           const ratio = e.limit_minor > 0 ? Math.min(e.spent_minor / e.limit_minor, 1) : 0;

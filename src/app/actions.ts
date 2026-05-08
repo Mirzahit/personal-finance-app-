@@ -123,6 +123,73 @@ export async function addAccountAction(
   redirect("/");
 }
 
+export async function addEnvelopeAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const name = String(formData.get("name") ?? "").trim();
+  const iconName = String(formData.get("icon_name") ?? "shopping-bag");
+  const currency = String(formData.get("currency") ?? "") as "KGS" | "KZT";
+  const limitStr = String(formData.get("limit") ?? "").replace(/\s/g, "");
+  const accountIdRaw = String(formData.get("account_id") ?? "");
+  const accountId = accountIdRaw === "" ? null : accountIdRaw;
+
+  if (!name) return { error: "Введи название" };
+  if (currency !== "KGS" && currency !== "KZT") return { error: "Выбери валюту" };
+  const limit = Number(limitStr);
+  if (!Number.isFinite(limit) || limit <= 0) return { error: "Лимит должен быть больше 0" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Нужно войти заново" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .maybeSingle<{ household_id: string }>();
+  if (!profile) return { error: "Профиль не найден" };
+
+  if (accountId) {
+    const { data: acc } = await supabase
+      .from("accounts")
+      .select("currency")
+      .eq("id", accountId)
+      .maybeSingle<{ currency: "KGS" | "KZT" }>();
+    if (acc && acc.currency !== currency) {
+      return { error: "Валюта конверта должна совпадать с валютой счёта" };
+    }
+  }
+
+  const { error } = await supabase.from("envelopes").insert({
+    household_id: profile.household_id,
+    account_id: accountId,
+    name,
+    icon_name: iconName,
+    currency,
+    limit_minor: Math.round(limit * 100),
+    spent_minor: 0,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/envelopes");
+  redirect("/envelopes");
+}
+
+export async function deleteEnvelopeAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  await supabase.from("envelopes").update({ archived: true }).eq("id", id);
+
+  revalidatePath("/");
+  revalidatePath("/envelopes");
+}
+
 export async function approveLeilaAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

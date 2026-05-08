@@ -1,12 +1,7 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { EnvelopesList } from "@/components/EnvelopesList";
+import { getAccounts, getEnvelopes } from "@/lib/supabase/queries";
 
-export default function EnvelopesPage() {
-  return (
-    <ComingSoon
-      icon="credit-card"
-      title="Конверты"
-      description="Категории внутри счетов с лимитами на месяц. Сумма всех конвертов не больше баланса счёта."
-      hint="Скоро: создание/редактирование конвертов, перенос остатков, история."
-    />
-  );
+export default async function EnvelopesPage() {
+  const [envelopes, accounts] = await Promise.all([getEnvelopes(), getAccounts()]);
+  return <EnvelopesList envelopes={envelopes} accounts={accounts} />;
 }
