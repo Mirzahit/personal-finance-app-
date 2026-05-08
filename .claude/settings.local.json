@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(grep -q -E \"Ready in|✓|Error|error|EADDRINUSE\" \"C:\\\\\\\\Users\\\\\\\\6CE0~1\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users----------Desktop-personal-finance-app\\\\\\\\cc07f411-6a95-49ec-9f79-13a617cdec33\\\\\\\\tasks\\\\\\\\b977v6nhh.output\")",
+      "Bash(cat \"C:\\\\\\\\Users\\\\\\\\6CE0~1\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users----------Desktop-personal-finance-app\\\\\\\\cc07f411-6a95-49ec-9f79-13a617cdec33\\\\\\\\tasks\\\\\\\\b977v6nhh.output\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(tail -30 \"C:\\\\\\\\Users\\\\\\\\6CE0~1\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users----------Desktop-personal-finance-app\\\\\\\\cc07f411-6a95-49ec-9f79-13a617cdec33\\\\\\\\tasks\\\\\\\\b977v6nhh.output\")",
+      "Bash(curl -s http://localhost:3000/)"
+    ]
+  }
+}

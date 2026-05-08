@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+
+  --bg-base: #0F2027;
+  --bg-elevated: #142A33;
+  --bg-card: #1A323D;
+  --bg-overlay: rgba(15, 32, 39, 0.85);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --text-primary: #ECF3F1;
+  --text-secondary: #A8B6B3;
+  --text-muted: #6E7E7B;
+
+  --accent: #28623A;
+  --accent-hover: #2F7244;
+  --accent-soft: rgba(40, 98, 58, 0.18);
+
+  --income: #3FB37F;
+  --expense: #E5634D;
+  --warning: #E8B144;
+  --debt: #D85447;
+  --goal-done: #F0C674;
+  --leila-request: #5BA3D0;
+}
+
+@theme inline {
+  --color-bg-base: var(--bg-base);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-card: var(--bg-card);
+  --color-bg-overlay: var(--bg-overlay);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-warning: var(--warning);
+  --color-debt: var(--debt);
+  --color-goal-done: var(--goal-done);
+  --color-leila-request: var(--leila-request);
+
+  --font-sans: var(--font-inter);
+
+  --radius-card: 18px;
+  --radius-pill: 999px;
+}
+
+html,
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+body {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
