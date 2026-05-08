@@ -485,7 +485,18 @@ function NoLeilaRequest() {
 function Goals({ goals }: { goals: DbGoal[] }) {
   return (
     <section>
-      <SectionHeader title="Цели и накопления" hint={`${goals.length}`} />
+      <SectionHeader
+        title="Цели и накопления"
+        hint={`${goals.length}`}
+        action={
+          <Link
+            href="/goals/new"
+            className="rounded-full border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-card"
+          >
+            + Цель
+          </Link>
+        }
+      />
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
         {goals.map((g, i) => {
           const ratio = g.target_minor > 0 ? Math.min(g.saved_minor / g.target_minor, 1) : 0;

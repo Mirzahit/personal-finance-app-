@@ -9,7 +9,7 @@ export type ActionState = {
   ok?: boolean;
 };
 
-export async function addExpenseAction(
+export async function addTransactionAction(
   _prev: ActionState | undefined,
   formData: FormData
 ): Promise<ActionState> {
@@ -18,6 +18,8 @@ export async function addExpenseAction(
   const accountId = String(formData.get("account_id") ?? "");
   const envelopeIdRaw = String(formData.get("envelope_id") ?? "");
   const envelopeId = envelopeIdRaw === "" ? null : envelopeIdRaw;
+  const typeRaw = String(formData.get("type") ?? "expense");
+  const type: "income" | "expense" = typeRaw === "income" ? "income" : "expense";
 
   if (!title) return { error: "Введи описание" };
   const amount = Number(amountStr);
@@ -45,36 +47,38 @@ export async function addExpenseAction(
   if (!account) return { error: "Счёт не найден" };
 
   const amountMinor = Math.round(amount * 100);
+  const effectiveEnvelopeId = type === "expense" ? envelopeId : null;
 
   const { error: txErr } = await supabase.from("transactions").insert({
     household_id: profile.household_id,
     account_id: account.id,
-    envelope_id: envelopeId,
+    envelope_id: effectiveEnvelopeId,
     user_id: user.id,
     title,
     amount_minor: amountMinor,
     currency: account.currency,
-    type: "expense",
+    type,
     occurred_at: new Date().toISOString(),
   });
   if (txErr) return { error: txErr.message };
 
+  const balanceDelta = type === "income" ? amountMinor : -amountMinor;
   await supabase
     .from("accounts")
-    .update({ balance_minor: account.balance_minor - amountMinor })
+    .update({ balance_minor: account.balance_minor + balanceDelta })
     .eq("id", account.id);
 
-  if (envelopeId) {
+  if (effectiveEnvelopeId) {
     const { data: env } = await supabase
       .from("envelopes")
       .select("spent_minor")
-      .eq("id", envelopeId)
+      .eq("id", effectiveEnvelopeId)
       .maybeSingle<{ spent_minor: number }>();
     if (env) {
       await supabase
         .from("envelopes")
         .update({ spent_minor: env.spent_minor + amountMinor })
-        .eq("id", envelopeId);
+        .eq("id", effectiveEnvelopeId);
     }
   }
 
@@ -121,6 +125,266 @@ export async function addAccountAction(
 
   revalidatePath("/");
   redirect("/");
+}
+
+export async function addGoalAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const name = String(formData.get("name") ?? "").trim();
+  const targetStr = String(formData.get("target") ?? "").replace(/\s/g, "");
+  const currency = String(formData.get("currency") ?? "") as "KGS" | "KZT";
+  const dueRaw = String(formData.get("due_date") ?? "").trim();
+
+  if (!name) return { error: "Введи название цели" };
+  if (currency !== "KGS" && currency !== "KZT") return { error: "Выбери валюту" };
+  const target = Number(targetStr);
+  if (!Number.isFinite(target) || target <= 0) return { error: "Цель должна быть больше 0" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Нужно войти заново" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .maybeSingle<{ household_id: string }>();
+  if (!profile) return { error: "Профиль не найден" };
+
+  const { error } = await supabase.from("goals").insert({
+    household_id: profile.household_id,
+    name,
+    target_minor: Math.round(target * 100),
+    saved_minor: 0,
+    currency,
+    due_date: dueRaw === "" ? null : dueRaw,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/goals");
+  redirect("/goals");
+}
+
+export async function depositToGoalAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const goalId = String(formData.get("goal_id") ?? "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const amountStr = String(formData.get("amount") ?? "").replace(/\s/g, "");
+
+  if (!goalId) return { error: "Не указана цель" };
+  if (!accountId) return { error: "Выбери счёт" };
+  const amount = Number(amountStr);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Сумма должна быть больше 0" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Нужно войти заново" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .maybeSingle<{ household_id: string }>();
+  if (!profile) return { error: "Профиль не найден" };
+
+  const { data: goal } = await supabase
+    .from("goals")
+    .select("id, name, currency, saved_minor, target_minor")
+    .eq("id", goalId)
+    .maybeSingle<{
+      id: string;
+      name: string;
+      currency: "KGS" | "KZT";
+      saved_minor: number;
+      target_minor: number;
+    }>();
+  if (!goal) return { error: "Цель не найдена" };
+
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, currency, balance_minor")
+    .eq("id", accountId)
+    .maybeSingle<{ id: string; currency: "KGS" | "KZT"; balance_minor: number }>();
+  if (!account) return { error: "Счёт не найден" };
+
+  if (account.currency !== goal.currency) {
+    return { error: "Валюта счёта и цели должны совпадать" };
+  }
+
+  const amountMinor = Math.round(amount * 100);
+  const newSaved = goal.saved_minor + amountMinor;
+  const achieved = newSaved >= goal.target_minor;
+
+  await supabase
+    .from("goals")
+    .update({ saved_minor: newSaved, achieved })
+    .eq("id", goal.id);
+
+  await supabase
+    .from("accounts")
+    .update({ balance_minor: account.balance_minor - amountMinor })
+    .eq("id", account.id);
+
+  await supabase.from("transactions").insert({
+    household_id: profile.household_id,
+    account_id: account.id,
+    user_id: user.id,
+    title: `В цель: ${goal.name}`,
+    amount_minor: amountMinor,
+    currency: account.currency,
+    type: "expense",
+  });
+
+  revalidatePath("/");
+  revalidatePath("/goals");
+  return { ok: true };
+}
+
+export async function deleteGoalAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("goals").delete().eq("id", id);
+  revalidatePath("/");
+  revalidatePath("/goals");
+}
+
+export async function addDebtAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const creditor = String(formData.get("creditor") ?? "").trim();
+  const totalStr = String(formData.get("total") ?? "").replace(/\s/g, "");
+  const currency = String(formData.get("currency") ?? "") as "KGS" | "KZT";
+  const endDateRaw = String(formData.get("end_date") ?? "").trim();
+
+  if (!creditor) return { error: "Кому должен?" };
+  if (currency !== "KGS" && currency !== "KZT") return { error: "Выбери валюту" };
+  const total = Number(totalStr);
+  if (!Number.isFinite(total) || total <= 0) return { error: "Сумма должна быть больше 0" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Нужно войти заново" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .maybeSingle<{ household_id: string }>();
+  if (!profile) return { error: "Профиль не найден" };
+
+  const { error } = await supabase.from("debts").insert({
+    household_id: profile.household_id,
+    creditor,
+    total_minor: Math.round(total * 100),
+    paid_minor: 0,
+    currency,
+    end_date: endDateRaw === "" ? null : endDateRaw,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/debts");
+  redirect("/debts");
+}
+
+export async function payDebtAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const debtId = String(formData.get("debt_id") ?? "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const amountStr = String(formData.get("amount") ?? "").replace(/\s/g, "");
+
+  if (!debtId) return { error: "Не указан долг" };
+  if (!accountId) return { error: "Выбери счёт" };
+  const amount = Number(amountStr);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Сумма должна быть больше 0" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Нужно войти заново" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .maybeSingle<{ household_id: string }>();
+  if (!profile) return { error: "Профиль не найден" };
+
+  const { data: debt } = await supabase
+    .from("debts")
+    .select("id, creditor, currency, paid_minor, total_minor")
+    .eq("id", debtId)
+    .maybeSingle<{
+      id: string;
+      creditor: string;
+      currency: "KGS" | "KZT";
+      paid_minor: number;
+      total_minor: number;
+    }>();
+  if (!debt) return { error: "Долг не найден" };
+
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, currency, balance_minor")
+    .eq("id", accountId)
+    .maybeSingle<{ id: string; currency: "KGS" | "KZT"; balance_minor: number }>();
+  if (!account) return { error: "Счёт не найден" };
+
+  if (account.currency !== debt.currency) {
+    return { error: "Валюта счёта и долга должны совпадать" };
+  }
+
+  const amountMinor = Math.round(amount * 100);
+  const newPaid = debt.paid_minor + amountMinor;
+  const paidOff = newPaid >= debt.total_minor;
+
+  await supabase
+    .from("debts")
+    .update({ paid_minor: newPaid, paid_off: paidOff })
+    .eq("id", debt.id);
+
+  await supabase
+    .from("accounts")
+    .update({ balance_minor: account.balance_minor - amountMinor })
+    .eq("id", account.id);
+
+  await supabase.from("transactions").insert({
+    household_id: profile.household_id,
+    account_id: account.id,
+    user_id: user.id,
+    title: `Долг: ${debt.creditor}`,
+    amount_minor: amountMinor,
+    currency: account.currency,
+    type: "expense",
+  });
+
+  revalidatePath("/");
+  revalidatePath("/debts");
+  return { ok: true };
+}
+
+export async function deleteDebtAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("debts").delete().eq("id", id);
+  revalidatePath("/");
+  revalidatePath("/debts");
 }
 
 export async function addEnvelopeAction(

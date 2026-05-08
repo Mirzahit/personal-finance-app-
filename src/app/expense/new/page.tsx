@@ -22,7 +22,7 @@ export default async function NewExpensePage() {
             ←
           </Link>
           <h1 className="flex-1 text-base font-semibold tracking-tight lg:text-lg">
-            Новый расход
+            Новая операция
           </h1>
         </div>
       </header>

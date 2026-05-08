@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Check } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { addExpenseAction, type ActionState } from "@/app/actions";
+import { addTransactionAction, type ActionState } from "@/app/actions";
 import type { DbAccount, DbEnvelope } from "@/lib/supabase/queries";
 
 const initialState: ActionState = {};
@@ -21,8 +21,9 @@ export function ExpenseForm({
   accounts: DbAccount[];
   envelopes: DbEnvelope[];
 }) {
-  const [state, formAction, pending] = useActionState(addExpenseAction, initialState);
+  const [state, formAction, pending] = useActionState(addTransactionAction, initialState);
 
+  const [type, setType] = useState<"expense" | "income">("expense");
   const [accountId, setAccountId] = useState<string>(accounts[0].id);
   const [amount, setAmount] = useState<string>("");
   const [title, setTitle] = useState<string>("");
@@ -41,10 +42,36 @@ export function ExpenseForm({
       action={formAction}
       className="mx-auto w-full max-w-[640px] flex-1 px-5 pt-6 pb-32 lg:px-0 lg:pt-10"
     >
+      <input type="hidden" name="type" value={type} />
       <input type="hidden" name="account_id" value={accountId} />
       <input type="hidden" name="envelope_id" value={envelopeId} />
       <input type="hidden" name="title" value={title} />
       <input type="hidden" name="amount" value={amount} />
+
+      <div className="grid grid-cols-2 gap-2 rounded-full border border-border-default bg-bg-elevated p-1">
+        <button
+          type="button"
+          onClick={() => setType("expense")}
+          className={`flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+            type === "expense" ? "bg-bg-card text-text-primary" : "text-text-secondary"
+          }`}
+        >
+          <ArrowUpRight className="h-4 w-4" strokeWidth={2} style={{ color: "var(--expense)" }} />
+          Расход
+        </button>
+        <button
+          type="button"
+          onClick={() => setType("income")}
+          className={`flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+            type === "income" ? "bg-bg-card text-text-primary" : "text-text-secondary"
+          }`}
+        >
+          <ArrowDownRight className="h-4 w-4" strokeWidth={2} style={{ color: "var(--income)" }} />
+          Доход
+        </button>
+      </div>
+
+      <div className="mt-4" />
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -132,7 +159,7 @@ export function ExpenseForm({
         />
       </Section>
 
-      {matchingEnvelopes.length > 0 ? (
+      {type === "expense" && matchingEnvelopes.length > 0 ? (
         <Section title="Конверт" hint="необязательно">
           <div className="flex flex-wrap gap-2">
             <button
@@ -179,7 +206,7 @@ export function ExpenseForm({
             disabled={pending || !amount || !title || Number(amount) <= 0}
             className="flex-1 rounded-full bg-accent px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {pending ? "Сохраняю…" : "Сохранить расход"}
+            {pending ? "Сохраняю…" : type === "income" ? "Сохранить доход" : "Сохранить расход"}
           </button>
         </div>
       </div>

@@ -12,6 +12,16 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Семейные финансы",
   description: "Личное приложение учёта семейных финансов",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icon.svg", type: "image/svg+xml" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Финансы",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {

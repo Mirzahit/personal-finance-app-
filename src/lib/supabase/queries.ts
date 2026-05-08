@@ -157,3 +157,23 @@ export async function getEnvelopes() {
     .returns<DbEnvelope[]>();
   return data ?? [];
 }
+
+export async function getGoals() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("goals")
+    .select("id, name, target_minor, saved_minor, currency, due_date, achieved")
+    .order("created_at")
+    .returns<DbGoal[]>();
+  return data ?? [];
+}
+
+export async function getDebts() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("debts")
+    .select("id, creditor, total_minor, paid_minor, currency, start_date, end_date, paid_off")
+    .order("created_at")
+    .returns<DbDebt[]>();
+  return data ?? [];
+}

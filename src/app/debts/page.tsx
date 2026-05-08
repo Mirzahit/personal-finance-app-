@@ -1,12 +1,7 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { DebtsList } from "@/components/DebtsList";
+import { getAccounts, getDebts } from "@/lib/supabase/queries";
 
-export default function DebtsPage() {
-  return (
-    <ComingSoon
-      icon="hand-coins"
-      title="Долги"
-      description="Только «я должен»: график погашения с датами и суммами. Когда платёж — приложение напомнит."
-      hint="Скоро: добавление долга, расписание выплат, авто-напоминания."
-    />
-  );
+export default async function DebtsPage() {
+  const [debts, accounts] = await Promise.all([getDebts(), getAccounts()]);
+  return <DebtsList debts={debts} accounts={accounts} />;
 }
