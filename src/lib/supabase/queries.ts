@@ -177,3 +177,98 @@ export async function getDebts() {
     .returns<DbDebt[]>();
   return data ?? [];
 }
+
+export type MonthAnalytics = {
+  monthLabel: string;
+  income: Record<Currency, number>;
+  expense: Record<Currency, number>;
+  byEnvelope: Array<{
+    envelope_id: string | null;
+    name: string;
+    icon_name: string;
+    currency: Currency;
+    spent_minor: number;
+  }>;
+  byDay: Record<Currency, Array<{ day: string; income: number; expense: number }>>;
+  txs: DbTx[];
+};
+
+export async function getMonthAnalytics(): Promise<MonthAnalytics> {
+  const supabase = await createClient();
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("id, title, account_id, envelope_id, user_id, amount_minor, currency, type, occurred_at, from_leila")
+    .gte("occurred_at", start.toISOString())
+    .lt("occurred_at", end.toISOString())
+    .order("occurred_at", { ascending: false })
+    .returns<DbTx[]>();
+
+  const { data: envelopes } = await supabase
+    .from("envelopes")
+    .select("id, name, icon_name, currency")
+    .returns<{ id: string; name: string; icon_name: string; currency: Currency }[]>();
+
+  const list = txs ?? [];
+  const envMap = new Map((envelopes ?? []).map((e) => [e.id, e]));
+
+  const income: Record<Currency, number> = { KGS: 0, KZT: 0 };
+  const expense: Record<Currency, number> = { KGS: 0, KZT: 0 };
+
+  for (const t of list) {
+    if (t.type === "income") income[t.currency] += t.amount_minor;
+    else if (t.type === "expense") expense[t.currency] += t.amount_minor;
+  }
+
+  const envBuckets = new Map<
+    string,
+    { envelope_id: string | null; name: string; icon_name: string; currency: Currency; spent_minor: number }
+  >();
+  for (const t of list) {
+    if (t.type !== "expense") continue;
+    const key = t.envelope_id ?? `__${t.currency}__null`;
+    const env = t.envelope_id ? envMap.get(t.envelope_id) : null;
+    const existing = envBuckets.get(key);
+    if (existing) {
+      existing.spent_minor += t.amount_minor;
+    } else {
+      envBuckets.set(key, {
+        envelope_id: t.envelope_id,
+        name: env?.name ?? "Без конверта",
+        icon_name: env?.icon_name ?? "shopping-bag",
+        currency: t.currency,
+        spent_minor: t.amount_minor,
+      });
+    }
+  }
+  const byEnvelope = [...envBuckets.values()].sort((a, b) => b.spent_minor - a.spent_minor);
+
+  const byDay: Record<Currency, Array<{ day: string; income: number; expense: number }>> = {
+    KGS: [],
+    KZT: [],
+  };
+  const dayMap: Record<Currency, Map<string, { income: number; expense: number }>> = {
+    KGS: new Map(),
+    KZT: new Map(),
+  };
+  for (const t of list) {
+    const day = new Date(t.occurred_at).toISOString().slice(0, 10);
+    const m = dayMap[t.currency];
+    const cur = m.get(day) ?? { income: 0, expense: 0 };
+    if (t.type === "income") cur.income += t.amount_minor;
+    if (t.type === "expense") cur.expense += t.amount_minor;
+    m.set(day, cur);
+  }
+  for (const c of ["KGS", "KZT"] as Currency[]) {
+    byDay[c] = [...dayMap[c].entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, v]) => ({ day, ...v }));
+  }
+
+  const monthLabel = now.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+
+  return { monthLabel, income, expense, byEnvelope, byDay, txs: list };
+}

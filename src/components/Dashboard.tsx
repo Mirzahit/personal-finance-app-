@@ -26,6 +26,7 @@ import type {
   DbLeilaRequest,
   DbProfile,
   DbTx,
+  MonthAnalytics,
 } from "@/lib/supabase/queries";
 
 type DashboardProps = {
@@ -37,6 +38,7 @@ type DashboardProps = {
     goals: DbGoal[];
     leilaRequest: DbLeilaRequest | null;
   };
+  analytics: MonthAnalytics;
 };
 
 const txIconMap: Record<string, LucideIcon> = {
@@ -66,7 +68,7 @@ function formatMoney(minor: number, currency: "KGS" | "KZT") {
   return `${n} ${currency === "KGS" ? "с" : "₸"}`;
 }
 
-export function Dashboard({ data }: DashboardProps) {
+export function Dashboard({ data, analytics }: DashboardProps) {
   const { profile, accounts, envelopes, txs, goals, leilaRequest } = data;
 
   if (accounts.length === 0) {
@@ -87,7 +89,7 @@ export function Dashboard({ data }: DashboardProps) {
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
         <div className="lg:col-span-8">
-          <Totals totals={totals} />
+          <Totals totals={totals} analytics={analytics} />
         </div>
         <div className="lg:col-span-4">
           {leilaRequest ? (
@@ -161,7 +163,15 @@ function PageHeading({ name }: { name: string }) {
   );
 }
 
-function Totals({ totals }: { totals: Record<"KGS" | "KZT", number> }) {
+function Totals({
+  totals,
+  analytics,
+}: {
+  totals: Record<"KGS" | "KZT", number>;
+  analytics: MonthAnalytics;
+}) {
+  const sumIncome = analytics.income.KGS + analytics.income.KZT;
+  const sumExpense = analytics.expense.KGS + analytics.expense.KZT;
   return (
     <motion.section
       initial={{ opacity: 0, y: 12 }}
@@ -182,7 +192,62 @@ function Totals({ totals }: { totals: Record<"KGS" | "KZT", number> }) {
           {formatMoney(totals.KZT, "KZT")}
         </p>
       </div>
+
+      {sumIncome > 0 || sumExpense > 0 ? (
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <MiniMonthCard
+            label="Доход"
+            kgs={analytics.income.KGS}
+            kzt={analytics.income.KZT}
+            type="income"
+          />
+          <MiniMonthCard
+            label="Расход"
+            kgs={analytics.expense.KGS}
+            kzt={analytics.expense.KZT}
+            type="expense"
+          />
+        </div>
+      ) : (
+        <p className="mt-5 text-xs text-text-muted">
+          Добавь операции — здесь покажутся итоги месяца
+        </p>
+      )}
+
+      <Link
+        href="/analytics"
+        className="mt-4 inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary"
+      >
+        Подробная аналитика →
+      </Link>
     </motion.section>
+  );
+}
+
+function MiniMonthCard({
+  label,
+  kgs,
+  kzt,
+  type,
+}: {
+  label: string;
+  kgs: number;
+  kzt: number;
+  type: "income" | "expense";
+}) {
+  const color = type === "income" ? "var(--income)" : "var(--expense)";
+  return (
+    <div className="rounded-2xl border border-border-subtle bg-bg-base/50 px-3 py-2.5">
+      <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color }}>
+        {label} в этом месяце
+      </p>
+      <p className="mt-1 text-sm font-semibold tabular-nums">
+        {formatMoney(kgs, "KGS")}
+      </p>
+      <p className="text-xs tabular-nums text-text-secondary">
+        {formatMoney(kzt, "KZT")}
+      </p>
+    </div>
   );
 }
 

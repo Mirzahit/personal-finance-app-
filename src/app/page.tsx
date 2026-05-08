@@ -1,7 +1,10 @@
 import { Dashboard } from "@/components/Dashboard";
-import { getDashboardData } from "@/lib/supabase/queries";
+import { getDashboardData, getMonthAnalytics } from "@/lib/supabase/queries";
 
 export default async function HomePage() {
-  const data = await getDashboardData();
-  return <Dashboard data={data} />;
+  const [data, analytics] = await Promise.all([
+    getDashboardData(),
+    getMonthAnalytics(),
+  ]);
+  return <Dashboard data={data} analytics={analytics} />;
 }

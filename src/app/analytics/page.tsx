@@ -1,12 +1,7 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { AnalyticsView } from "@/components/AnalyticsView";
+import { getMonthAnalytics } from "@/lib/supabase/queries";
 
-export default function AnalyticsPage() {
-  return (
-    <ComingSoon
-      icon="line-chart"
-      title="Аналитика"
-      description="Куда уходят деньги: по конвертам, по дням, по членам семьи. Сравнение с прошлым месяцем."
-      hint="Скоро: графики расходов, тренды, отчёты за период."
-    />
-  );
+export default async function AnalyticsPage() {
+  const data = await getMonthAnalytics();
+  return <AnalyticsView data={data} />;
 }
