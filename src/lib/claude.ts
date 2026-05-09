@@ -1,17 +1,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-let client: Anthropic | null = null;
-
+// No singleton — re-read process.env on every call to avoid stale captures
+// across cold/warm Lambda boots after env-var changes on Vercel.
 export function getClaude(): Anthropic {
-  if (client) return client;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error(
       "ANTHROPIC_API_KEY is not set. Add it in Vercel → Environment Variables."
     );
   }
-  client = new Anthropic({ apiKey });
-  return client;
+  return new Anthropic({ apiKey });
 }
 
 export type Recommendation = {
