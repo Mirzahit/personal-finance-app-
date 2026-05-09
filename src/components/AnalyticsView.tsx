@@ -17,6 +17,7 @@ import {
   Utensils,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import type { MonthAnalytics } from "@/lib/supabase/queries";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -161,9 +162,10 @@ export function AnalyticsView({ data }: { data: MonthAnalytics }) {
                   minute: "2-digit",
                 });
                 return (
-                  <div
+                  <Link
                     key={t.id}
-                    className="flex items-center gap-3 px-4 py-3 lg:px-5 lg:py-4"
+                    href={`/transactions/${t.id}/edit`}
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-card lg:px-5 lg:py-4"
                   >
                     <div
                       className="grid h-9 w-9 place-items-center rounded-full"
@@ -204,7 +206,7 @@ export function AnalyticsView({ data }: { data: MonthAnalytics }) {
                       {t.type === "income" ? "+" : "−"}
                       {formatMoney(t.amount_minor, t.currency)}
                     </p>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

@@ -127,6 +127,159 @@ export async function addAccountAction(
   redirect("/");
 }
 
+/**
+ * Откатывает эффект транзакции на счёт и конверт (обратное от addTransaction).
+ * Используется при удалении и при редактировании.
+ */
+async function revertTxEffects(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tx: {
+    account_id: string;
+    envelope_id: string | null;
+    amount_minor: number;
+    type: "income" | "expense" | "transfer";
+  }
+) {
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, balance_minor")
+    .eq("id", tx.account_id)
+    .maybeSingle<{ id: string; balance_minor: number }>();
+  if (account) {
+    const delta = tx.type === "income" ? -tx.amount_minor : tx.amount_minor;
+    await supabase
+      .from("accounts")
+      .update({ balance_minor: account.balance_minor + delta })
+      .eq("id", account.id);
+  }
+  if (tx.envelope_id && tx.type === "expense") {
+    const { data: env } = await supabase
+      .from("envelopes")
+      .select("spent_minor")
+      .eq("id", tx.envelope_id)
+      .maybeSingle<{ spent_minor: number }>();
+    if (env) {
+      await supabase
+        .from("envelopes")
+        .update({ spent_minor: Math.max(env.spent_minor - tx.amount_minor, 0) })
+        .eq("id", tx.envelope_id);
+    }
+  }
+}
+
+export async function editTransactionAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const amountStr = String(formData.get("amount") ?? "").replace(/\s/g, "");
+  const accountId = String(formData.get("account_id") ?? "");
+  const envelopeIdRaw = String(formData.get("envelope_id") ?? "");
+  const envelopeId = envelopeIdRaw === "" ? null : envelopeIdRaw;
+  const typeRaw = String(formData.get("type") ?? "expense");
+  const type: "income" | "expense" = typeRaw === "income" ? "income" : "expense";
+
+  if (!id) return { error: "Не указана операция" };
+  if (!title) return { error: "Введи описание" };
+  const amount = Number(amountStr);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Сумма должна быть больше 0" };
+  if (!accountId) return { error: "Выбери счёт" };
+
+  const supabase = await createClient();
+
+  const { data: oldTx } = await supabase
+    .from("transactions")
+    .select("id, account_id, envelope_id, amount_minor, type, currency")
+    .eq("id", id)
+    .maybeSingle<{
+      id: string;
+      account_id: string;
+      envelope_id: string | null;
+      amount_minor: number;
+      type: "income" | "expense" | "transfer";
+      currency: "KGS" | "KZT";
+    }>();
+  if (!oldTx) return { error: "Операция не найдена" };
+
+  // Откатить эффект старой
+  await revertTxEffects(supabase, oldTx);
+
+  const { data: newAccount } = await supabase
+    .from("accounts")
+    .select("id, currency, balance_minor")
+    .eq("id", accountId)
+    .maybeSingle<{ id: string; currency: "KGS" | "KZT"; balance_minor: number }>();
+  if (!newAccount) return { error: "Счёт не найден" };
+
+  const amountMinor = Math.round(amount * 100);
+  const effectiveEnvelopeId = type === "expense" ? envelopeId : null;
+
+  // Применить новую
+  await supabase
+    .from("transactions")
+    .update({
+      title,
+      account_id: newAccount.id,
+      envelope_id: effectiveEnvelopeId,
+      amount_minor: amountMinor,
+      currency: newAccount.currency,
+      type,
+    })
+    .eq("id", id);
+
+  const balanceDelta = type === "income" ? amountMinor : -amountMinor;
+  await supabase
+    .from("accounts")
+    .update({ balance_minor: newAccount.balance_minor + balanceDelta })
+    .eq("id", newAccount.id);
+
+  if (effectiveEnvelopeId) {
+    const { data: env } = await supabase
+      .from("envelopes")
+      .select("spent_minor")
+      .eq("id", effectiveEnvelopeId)
+      .maybeSingle<{ spent_minor: number }>();
+    if (env) {
+      await supabase
+        .from("envelopes")
+        .update({ spent_minor: env.spent_minor + amountMinor })
+        .eq("id", effectiveEnvelopeId);
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/analytics");
+  revalidatePath("/envelopes");
+  redirect("/");
+}
+
+export async function deleteTransactionAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = await createClient();
+  const { data: tx } = await supabase
+    .from("transactions")
+    .select("id, account_id, envelope_id, amount_minor, type")
+    .eq("id", id)
+    .maybeSingle<{
+      id: string;
+      account_id: string;
+      envelope_id: string | null;
+      amount_minor: number;
+      type: "income" | "expense" | "transfer";
+    }>();
+  if (!tx) return;
+
+  await revertTxEffects(supabase, tx);
+  await supabase.from("transactions").delete().eq("id", id);
+
+  revalidatePath("/");
+  revalidatePath("/analytics");
+  revalidatePath("/envelopes");
+}
+
 export async function addGoalAction(
   _prev: ActionState | undefined,
   formData: FormData

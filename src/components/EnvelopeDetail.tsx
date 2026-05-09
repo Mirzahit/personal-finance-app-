@@ -187,28 +187,32 @@ export function EnvelopeDetail({
                             delay: i * 0.03,
                             ease: "easeOut",
                           }}
-                          className="flex items-center gap-3 px-4 py-3"
                         >
-                          <div
-                            className="grid h-9 w-9 place-items-center rounded-full"
-                            style={{ background: "rgba(229,99,77,0.12)" }}
+                          <Link
+                            href={`/transactions/${t.id}/edit`}
+                            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-card"
                           >
-                            <ShoppingBag
-                              className="h-4 w-4"
-                              strokeWidth={1.75}
-                              style={{ color: "var(--expense)" }}
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{t.title}</p>
-                            <p className="text-xs text-text-muted">
-                              {acc?.name ?? "счёт"} · {time}
-                              {t.from_leila ? " · от Лейлы" : ""}
+                            <div
+                              className="grid h-9 w-9 place-items-center rounded-full"
+                              style={{ background: "rgba(229,99,77,0.12)" }}
+                            >
+                              <ShoppingBag
+                                className="h-4 w-4"
+                                strokeWidth={1.75}
+                                style={{ color: "var(--expense)" }}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{t.title}</p>
+                              <p className="text-xs text-text-muted">
+                                {acc?.name ?? "счёт"} · {time}
+                                {t.from_leila ? " · от Лейлы" : ""}
+                              </p>
+                            </div>
+                            <p className="text-sm font-semibold tabular-nums">
+                              −{formatMoney(t.amount_minor, t.currency)}
                             </p>
-                          </div>
-                          <p className="text-sm font-semibold tabular-nums">
-                            −{formatMoney(t.amount_minor, t.currency)}
-                          </p>
+                          </Link>
                         </motion.div>
                       );
                     })}

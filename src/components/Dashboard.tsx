@@ -426,35 +426,39 @@ function TodayFeed({ txs, accounts }: { txs: DbTx[]; accounts: DbAccount[] }) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: i < 5 ? 0.1 + i * 0.04 : 0, ease: "easeOut" }}
-              className="flex items-center gap-3 px-4 py-3 lg:px-5 lg:py-4"
             >
-              <div
-                className="grid h-9 w-9 place-items-center rounded-full"
-                style={{
-                  background:
-                    t.type === "income" ? "rgba(63,179,127,0.14)" : "rgba(229,99,77,0.12)",
-                }}
+              <Link
+                href={`/transactions/${t.id}/edit`}
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-card lg:px-5 lg:py-4"
               >
-                <Icon
-                  className="h-4 w-4"
-                  strokeWidth={1.75}
-                  style={{ color: t.type === "income" ? "var(--income)" : "var(--expense)" }}
-                />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{t.title}</p>
-                <p className="text-xs text-text-muted">
-                  {acc?.name ?? "счёт"} · {time}
-                  {t.from_leila ? " · от Лейлы" : ""}
+                <div
+                  className="grid h-9 w-9 place-items-center rounded-full"
+                  style={{
+                    background:
+                      t.type === "income" ? "rgba(63,179,127,0.14)" : "rgba(229,99,77,0.12)",
+                  }}
+                >
+                  <Icon
+                    className="h-4 w-4"
+                    strokeWidth={1.75}
+                    style={{ color: t.type === "income" ? "var(--income)" : "var(--expense)" }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{t.title}</p>
+                  <p className="text-xs text-text-muted">
+                    {acc?.name ?? "счёт"} · {time}
+                    {t.from_leila ? " · от Лейлы" : ""}
+                  </p>
+                </div>
+                <p
+                  className="text-sm font-semibold tabular-nums"
+                  style={{ color: t.type === "income" ? "var(--income)" : "var(--text-primary)" }}
+                >
+                  {t.type === "income" ? "+" : "−"}
+                  {formatMoney(t.amount_minor, t.currency)}
                 </p>
-              </div>
-              <p
-                className="text-sm font-semibold tabular-nums"
-                style={{ color: t.type === "income" ? "var(--income)" : "var(--text-primary)" }}
-              >
-                {t.type === "income" ? "+" : "−"}
-                {formatMoney(t.amount_minor, t.currency)}
-              </p>
+              </Link>
             </motion.div>
           );
         })}
