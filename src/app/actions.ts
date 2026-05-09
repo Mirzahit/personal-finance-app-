@@ -816,6 +816,16 @@ export async function approveLeilaAction(formData: FormData) {
   revalidatePath("/");
 }
 
+export async function diagAiAction(): Promise<{ message: string }> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { message: "ANTHROPIC_API_KEY: missing" };
+  }
+  return {
+    message: `ANTHROPIC_API_KEY: set, length=${key.length}, prefix=${key.slice(0, 12)}…`,
+  };
+}
+
 export type RecommendationsResult =
   | { ok: true; recommendations: Recommendation[] }
   | { ok: false; error: string };

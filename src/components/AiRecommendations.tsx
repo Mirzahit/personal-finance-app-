@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Lightbulb, Sparkles, ThumbsUp } from "lucide-react";
 import { useState, useTransition } from "react";
 import {
+  diagAiAction,
   getRecommendationsAction,
   type RecommendationsResult,
 } from "@/app/actions";
@@ -69,18 +70,33 @@ export function AiRecommendations() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClick}
-          disabled={isPending}
-          className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isPending
-            ? "Думаю…"
-            : items
-              ? "Обновить"
-              : "Получить советы"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              startTransition(async () => {
+                const r = await diagAiAction();
+                setError(r.message);
+                setItems(null);
+              });
+            }}
+            className="rounded-full border border-border-default px-3 py-2 text-xs text-text-secondary hover:bg-bg-card"
+          >
+            Диагностика
+          </button>
+          <button
+            type="button"
+            onClick={onClick}
+            disabled={isPending}
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending
+              ? "Думаю…"
+              : items
+                ? "Обновить"
+                : "Получить советы"}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
