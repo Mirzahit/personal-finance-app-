@@ -1,12 +1,7 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { AccountsList } from "@/components/AccountsList";
+import { getAccounts } from "@/lib/supabase/queries";
 
-export default function AccountsPage() {
-  return (
-    <ComingSoon
-      icon="wallet"
-      title="Счета"
-      description="Здесь будут все счета с подробной историей и графиками — М банк, Каспи, наличные сом и тенге."
-      hint="Скоро: детали по каждому счёту, фильтры по периоду."
-    />
-  );
+export default async function AccountsPage() {
+  const accounts = await getAccounts();
+  return <AccountsList accounts={accounts} />;
 }

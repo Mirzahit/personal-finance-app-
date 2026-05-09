@@ -283,21 +283,25 @@ function Accounts({ accounts }: { accounts: DbAccount[] }) {
               visible: { opacity: 1, y: 0 },
             }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="flex flex-col items-start rounded-[18px] border border-border-default bg-bg-elevated px-4 py-4 lg:px-5 lg:py-5"
           >
-            <div className="flex w-full items-center justify-between">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft">
-                <Wallet className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
+            <Link
+              href={`/accounts/${a.id}`}
+              className="flex flex-col items-start rounded-[18px] border border-border-default bg-bg-elevated px-4 py-4 transition-colors hover:bg-bg-card lg:px-5 lg:py-5"
+            >
+              <div className="flex w-full items-center justify-between">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft">
+                  <Wallet className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
+                </div>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
+                  {a.currency}
+                </span>
               </div>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
-                {a.currency}
-              </span>
-            </div>
-            <p className="mt-3 text-sm text-text-secondary">{a.name}</p>
-            <p className="text-xs text-text-muted">{a.bank}</p>
-            <p className="mt-3 text-base font-semibold tabular-nums lg:text-lg">
-              {formatMoney(a.balance_minor, a.currency)}
-            </p>
+              <p className="mt-3 text-sm text-text-secondary">{a.name}</p>
+              <p className="text-xs text-text-muted">{a.bank}</p>
+              <p className="mt-3 text-base font-semibold tabular-nums lg:text-lg">
+                {formatMoney(a.balance_minor, a.currency)}
+              </p>
+            </Link>
           </motion.div>
         ))}
       </motion.div>

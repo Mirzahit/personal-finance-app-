@@ -213,6 +213,28 @@ export async function getPermissionsData(): Promise<PermissionsData> {
   };
 }
 
+export async function getAccountDetail(accountId: string): Promise<{
+  account: DbAccount | null;
+  transactions: DbTx[];
+} | null> {
+  const supabase = await createClient();
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, name, bank, currency, balance_minor, position, shared_with_spouse")
+    .eq("id", accountId)
+    .maybeSingle<DbAccount>();
+  if (!account) return null;
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select(
+      "id, title, account_id, envelope_id, user_id, amount_minor, currency, type, occurred_at, from_leila"
+    )
+    .eq("account_id", accountId)
+    .order("occurred_at", { ascending: false })
+    .returns<DbTx[]>();
+  return { account, transactions: transactions ?? [] };
+}
+
 export async function getEnvelopeDetail(envelopeId: string): Promise<{
   envelope: DbEnvelope | null;
   transactions: DbTx[];
