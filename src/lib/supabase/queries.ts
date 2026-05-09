@@ -9,6 +9,7 @@ export type DbAccount = {
   currency: Currency;
   balance_minor: number;
   position: number;
+  shared_with_spouse?: boolean;
 };
 
 export type DbEnvelope = {
@@ -19,6 +20,7 @@ export type DbEnvelope = {
   currency: Currency;
   limit_minor: number;
   spent_minor: number;
+  shared_with_spouse?: boolean;
 };
 
 export type DbTx = {
@@ -42,6 +44,7 @@ export type DbGoal = {
   currency: Currency;
   due_date: string | null;
   achieved: boolean;
+  shared_with_spouse?: boolean;
 };
 
 export type DbDebt = {
@@ -53,6 +56,7 @@ export type DbDebt = {
   start_date: string;
   end_date: string | null;
   paid_off: boolean;
+  shared_with_spouse?: boolean;
 };
 
 export type DbLeilaRequest = {
@@ -139,11 +143,85 @@ export async function getAccounts() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("accounts")
-    .select("id, name, bank, currency, balance_minor, position")
+    .select("id, name, bank, currency, balance_minor, position, shared_with_spouse")
     .eq("archived", false)
     .order("position")
     .order("created_at")
     .returns<DbAccount[]>();
+  return data ?? [];
+}
+
+export async function getCurrentProfile(): Promise<DbProfile | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, household_id, display_name, avatar_letter, role")
+    .eq("id", user.id)
+    .maybeSingle<DbProfile>();
+  return data ?? null;
+}
+
+export type PermissionsData = {
+  accounts: DbAccount[];
+  envelopes: DbEnvelope[];
+  goals: DbGoal[];
+  debts: DbDebt[];
+};
+
+export async function getPermissionsData(): Promise<PermissionsData> {
+  const supabase = await createClient();
+  const [{ data: accounts }, { data: envelopes }, { data: goals }, { data: debts }] =
+    await Promise.all([
+      supabase
+        .from("accounts")
+        .select("id, name, bank, currency, balance_minor, position, shared_with_spouse")
+        .eq("archived", false)
+        .order("position")
+        .returns<DbAccount[]>(),
+      supabase
+        .from("envelopes")
+        .select(
+          "id, name, icon_name, account_id, currency, limit_minor, spent_minor, shared_with_spouse"
+        )
+        .eq("archived", false)
+        .order("position")
+        .returns<DbEnvelope[]>(),
+      supabase
+        .from("goals")
+        .select(
+          "id, name, target_minor, saved_minor, currency, due_date, achieved, shared_with_spouse"
+        )
+        .order("created_at")
+        .returns<DbGoal[]>(),
+      supabase
+        .from("debts")
+        .select(
+          "id, creditor, total_minor, paid_minor, currency, start_date, end_date, paid_off, shared_with_spouse"
+        )
+        .order("created_at")
+        .returns<DbDebt[]>(),
+    ]);
+  return {
+    accounts: accounts ?? [],
+    envelopes: envelopes ?? [],
+    goals: goals ?? [],
+    debts: debts ?? [],
+  };
+}
+
+export async function getMySpouseRequests(): Promise<DbLeilaRequest[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("leila_requests")
+    .select(
+      "id, account_id, envelope_id, category, estimated_minor, actual_minor, currency, status, created_at"
+    )
+    .order("created_at", { ascending: false })
+    .returns<DbLeilaRequest[]>();
   return data ?? [];
 }
 

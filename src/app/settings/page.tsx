@@ -1,12 +1,19 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { redirect } from "next/navigation";
+import { SettingsView } from "@/components/SettingsView";
+import { getCurrentProfile, getPermissionsData } from "@/lib/supabase/queries";
 
-export default function SettingsPage() {
-  return (
-    <ComingSoon
-      icon="settings"
-      title="Настройки"
-      description="Профиль, категории, AI-помощник, экспорт данных, импорт CSV из Каспи и М банк."
-      hint="Скоро: тонкая настройка под себя и Лейлу."
-    />
-  );
+export default async function SettingsPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "owner") {
+    return (
+      <div className="rounded-[22px] border border-border-default bg-bg-elevated p-8 text-center">
+        <p className="text-sm text-text-secondary">
+          Настройки доступны только владельцу семьи.
+        </p>
+      </div>
+    );
+  }
+  const data = await getPermissionsData();
+  return <SettingsView data={data} />;
 }

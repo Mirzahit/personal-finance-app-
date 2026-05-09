@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
+import { getCurrentProfile } from "@/lib/supabase/queries";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,15 +32,28 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let profile = null;
+  try {
+    profile = await getCurrentProfile();
+  } catch {
+    // not logged in or env vars missing — proxy will redirect
+  }
+
   return (
     <html lang="ru" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-bg-base text-text-primary">
-        <AppShell>{children}</AppShell>
+        <AppShell
+          role={profile?.role ?? "owner"}
+          displayName={profile?.display_name ?? "Гость"}
+          avatarLetter={profile?.avatar_letter ?? "?"}
+        >
+          {children}
+        </AppShell>
       </body>
     </html>
   );

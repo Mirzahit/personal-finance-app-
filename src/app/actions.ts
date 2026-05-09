@@ -443,6 +443,74 @@ export async function addEnvelopeAction(
   redirect("/envelopes");
 }
 
+export async function toggleResourceSharedAction(formData: FormData) {
+  const resourceTypeRaw = String(formData.get("resource") ?? "");
+  const id = String(formData.get("id") ?? "");
+  const sharedRaw = String(formData.get("shared") ?? "");
+  const shared = sharedRaw === "true";
+
+  const tables: Record<string, string> = {
+    account: "accounts",
+    envelope: "envelopes",
+    goal: "goals",
+    debt: "debts",
+  };
+  const table = tables[resourceTypeRaw];
+  if (!table || !id) return;
+
+  const supabase = await createClient();
+  await supabase.from(table).update({ shared_with_spouse: shared }).eq("id", id);
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
+export async function createSpouseRequestAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const category = String(formData.get("category") ?? "").trim();
+  const amountStr = String(formData.get("amount") ?? "").replace(/\s/g, "");
+  const currency = String(formData.get("currency") ?? "") as "KGS" | "KZT";
+  const accountId = String(formData.get("account_id") ?? "");
+  const envelopeIdRaw = String(formData.get("envelope_id") ?? "");
+  const envelopeId = envelopeIdRaw === "" ? null : envelopeIdRaw;
+
+  if (!category) return { error: "Введи описание" };
+  if (currency !== "KGS" && currency !== "KZT") return { error: "Выбери валюту" };
+  const amount = Number(amountStr);
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Сумма должна быть больше 0" };
+  if (!accountId) return { error: "Выбери счёт" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Нужно войти заново" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .maybeSingle<{ household_id: string }>();
+  if (!profile) return { error: "Профиль не найден" };
+
+  const { error } = await supabase.from("leila_requests").insert({
+    household_id: profile.household_id,
+    account_id: accountId,
+    envelope_id: envelopeId,
+    requested_by: user.id,
+    category,
+    estimated_minor: Math.round(amount * 100),
+    currency,
+    status: "pending",
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/leila");
+  redirect("/");
+}
+
 export async function deleteEnvelopeAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;

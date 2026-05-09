@@ -1,12 +1,20 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { redirect } from "next/navigation";
+import { LeilaRequestsList } from "@/components/LeilaRequestsList";
+import {
+  getAccounts,
+  getCurrentProfile,
+  getMySpouseRequests,
+} from "@/lib/supabase/queries";
 
-export default function LeilaPage() {
-  return (
-    <ComingSoon
-      icon="users"
-      title="Лейла"
-      description="Все запросы Лейлы в одном месте. Каждое её списание — запрос → твоё подтверждение → факт.сумма → транзакция."
-      hint="Скоро: история подтверждённых, отклонённых и просроченных запросов, фильтры."
-    />
-  );
+export default async function LeilaPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "owner") redirect("/me");
+
+  const [requests, accounts] = await Promise.all([
+    getMySpouseRequests(),
+    getAccounts(),
+  ]);
+
+  return <LeilaRequestsList requests={requests} accounts={accounts} />;
 }
