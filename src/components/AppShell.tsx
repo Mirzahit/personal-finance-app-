@@ -78,6 +78,8 @@ export function AppShell({ children, role, displayName, avatarLetter }: ShellPro
     pathname.startsWith("/debts/new") ||
     pathname.startsWith("/request/new") ||
     pathname.startsWith("/transactions/") ||
+    pathname.match(/^\/goals\/[^/]+\/edit/) !== null ||
+    pathname.match(/^\/debts\/[^/]+\/edit/) !== null ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup");
 

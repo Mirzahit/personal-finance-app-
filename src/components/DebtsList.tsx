@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { HandCoins, Plus, Trash2 } from "lucide-react";
+import { HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
@@ -118,6 +118,13 @@ function DebtCard({ debt, accounts }: { debt: DbDebt; accounts: DbAccount[] }) {
         </div>
         <div className="flex items-center gap-2">
           <p className="text-base font-semibold tabular-nums">{pct}%</p>
+          <Link
+            href={`/debts/${debt.id}/edit`}
+            aria-label="Изменить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-text-primary"
+          >
+            <Pencil className="h-4 w-4" strokeWidth={1.75} />
+          </Link>
           <form action={deleteDebtAction}>
             <input type="hidden" name="id" value={debt.id} />
             <button

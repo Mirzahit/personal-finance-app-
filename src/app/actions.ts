@@ -401,6 +401,44 @@ export async function depositToGoalAction(
   return { ok: true };
 }
 
+export async function editGoalAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const targetStr = String(formData.get("target") ?? "").replace(/\s/g, "");
+  const dueRaw = String(formData.get("due_date") ?? "").trim();
+
+  if (!id) return { error: "Не указана цель" };
+  if (!name) return { error: "Введи название" };
+  const target = Number(targetStr);
+  if (!Number.isFinite(target) || target <= 0) return { error: "Сумма должна быть больше 0" };
+
+  const supabase = await createClient();
+  const { data: goal } = await supabase
+    .from("goals")
+    .select("saved_minor")
+    .eq("id", id)
+    .maybeSingle<{ saved_minor: number }>();
+  if (!goal) return { error: "Цель не найдена" };
+
+  const targetMinor = Math.round(target * 100);
+  await supabase
+    .from("goals")
+    .update({
+      name,
+      target_minor: targetMinor,
+      due_date: dueRaw === "" ? null : dueRaw,
+      achieved: goal.saved_minor >= targetMinor,
+    })
+    .eq("id", id);
+
+  revalidatePath("/");
+  revalidatePath("/goals");
+  redirect("/goals");
+}
+
 export async function deleteGoalAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
@@ -529,6 +567,44 @@ export async function payDebtAction(
   revalidatePath("/");
   revalidatePath("/debts");
   return { ok: true };
+}
+
+export async function editDebtAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "");
+  const creditor = String(formData.get("creditor") ?? "").trim();
+  const totalStr = String(formData.get("total") ?? "").replace(/\s/g, "");
+  const endDateRaw = String(formData.get("end_date") ?? "").trim();
+
+  if (!id) return { error: "Не указан долг" };
+  if (!creditor) return { error: "Кому должен?" };
+  const total = Number(totalStr);
+  if (!Number.isFinite(total) || total <= 0) return { error: "Сумма должна быть больше 0" };
+
+  const supabase = await createClient();
+  const { data: debt } = await supabase
+    .from("debts")
+    .select("paid_minor")
+    .eq("id", id)
+    .maybeSingle<{ paid_minor: number }>();
+  if (!debt) return { error: "Долг не найден" };
+
+  const totalMinor = Math.round(total * 100);
+  await supabase
+    .from("debts")
+    .update({
+      creditor,
+      total_minor: totalMinor,
+      end_date: endDateRaw === "" ? null : endDateRaw,
+      paid_off: debt.paid_minor >= totalMinor,
+    })
+    .eq("id", id);
+
+  revalidatePath("/");
+  revalidatePath("/debts");
+  redirect("/debts");
 }
 
 export async function deleteDebtAction(formData: FormData) {

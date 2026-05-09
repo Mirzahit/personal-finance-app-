@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Plus, Target, Trash2 } from "lucide-react";
+import { Pencil, Plus, Target, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
@@ -111,6 +111,13 @@ function GoalCard({ goal, accounts }: { goal: DbGoal; accounts: DbAccount[] }) {
         </div>
         <div className="flex items-center gap-2">
           <p className="text-base font-semibold tabular-nums">{pct}%</p>
+          <Link
+            href={`/goals/${goal.id}/edit`}
+            aria-label="Изменить"
+            className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-text-primary"
+          >
+            <Pencil className="h-4 w-4" strokeWidth={1.75} />
+          </Link>
           <form action={deleteGoalAction}>
             <input type="hidden" name="id" value={goal.id} />
             <button
