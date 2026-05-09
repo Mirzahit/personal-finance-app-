@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getClaude, type Recommendation } from "@/lib/claude";
 import { createClient } from "@/lib/supabase/server";
 
 export type ActionState = {
@@ -813,6 +814,125 @@ export async function approveLeilaAction(formData: FormData) {
   }
 
   revalidatePath("/");
+}
+
+export type RecommendationsResult =
+  | { ok: true; recommendations: Recommendation[] }
+  | { ok: false; error: string };
+
+export async function getRecommendationsAction(): Promise<RecommendationsResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Нужно войти" };
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [{ data: accounts }, { data: envelopes }, { data: txs }, { data: goals }, { data: debts }] =
+      await Promise.all([
+        supabase.from("accounts").select("name, currency, balance_minor").eq("archived", false),
+        supabase.from("envelopes").select("name, currency, limit_minor, spent_minor").eq("archived", false),
+        supabase
+          .from("transactions")
+          .select("title, amount_minor, currency, type, occurred_at")
+          .gte("occurred_at", monthStart.toISOString())
+          .order("occurred_at", { ascending: false })
+          .limit(100),
+        supabase.from("goals").select("name, target_minor, saved_minor, currency, due_date, achieved"),
+        supabase.from("debts").select("creditor, total_minor, paid_minor, currency, end_date, paid_off"),
+      ]);
+
+    const summary = {
+      month: now.toLocaleDateString("ru-RU", { month: "long", year: "numeric" }),
+      accounts: (accounts ?? []).map((a) => ({
+        name: a.name,
+        currency: a.currency,
+        balance: a.balance_minor / 100,
+      })),
+      envelopes: (envelopes ?? []).map((e) => ({
+        name: e.name,
+        currency: e.currency,
+        limit: e.limit_minor / 100,
+        spent: e.spent_minor / 100,
+        used_pct: e.limit_minor > 0 ? Math.round((e.spent_minor / e.limit_minor) * 100) : 0,
+      })),
+      transactions: (txs ?? []).map((t) => ({
+        title: t.title,
+        amount: t.amount_minor / 100,
+        currency: t.currency,
+        type: t.type,
+        date: t.occurred_at.slice(0, 10),
+      })),
+      goals: (goals ?? []).map((g) => ({
+        name: g.name,
+        target: g.target_minor / 100,
+        saved: g.saved_minor / 100,
+        currency: g.currency,
+        due: g.due_date,
+        achieved: g.achieved,
+      })),
+      debts: (debts ?? []).map((d) => ({
+        creditor: d.creditor,
+        total: d.total_minor / 100,
+        paid: d.paid_minor / 100,
+        currency: d.currency,
+        due: d.end_date,
+        paid_off: d.paid_off,
+      })),
+    };
+
+    const claude = getClaude();
+    const response = await claude.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 2048,
+      system:
+        "Ты — личный финансовый советник для семьи в Казахстане и Кыргызстане. Используй валюты KZT (₸) и KGS (с) как они приходят. Отвечай кратко и конкретно на русском. Давай 3–5 точных советов на основе данных. Каждый совет — заголовок + 1–2 предложения с конкретными цифрами из данных. Тип `tip` для нейтральных советов, `warning` для рисков (перерасход, скоро дедлайн), `praise` для похвалы (достигнутая цель, экономия).",
+      messages: [
+        {
+          role: "user",
+          content: `Вот данные нашей семьи за ${summary.month}. Дай советы:\n\n${JSON.stringify(summary, null, 2)}`,
+        },
+      ],
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              recommendations: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    title: { type: "string" },
+                    body: { type: "string" },
+                    type: { type: "string", enum: ["tip", "warning", "praise"] },
+                  },
+                  required: ["title", "body", "type"],
+                },
+              },
+            },
+            required: ["recommendations"],
+          },
+        },
+      },
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      return { ok: false, error: "Пустой ответ от AI" };
+    }
+    const parsed = JSON.parse(textBlock.text) as { recommendations: Recommendation[] };
+    return { ok: true, recommendations: parsed.recommendations };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Неизвестная ошибка";
+    return { ok: false, error: message };
+  }
 }
 
 export async function snoozeLeilaAction(formData: FormData) {

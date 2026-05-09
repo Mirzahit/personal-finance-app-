@@ -17,6 +17,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import { AiRecommendations } from "@/components/AiRecommendations";
 import Link from "next/link";
 import { approveLeilaAction, snoozeLeilaAction } from "@/app/actions";
 import type {
@@ -116,6 +117,10 @@ export function Dashboard({ data, analytics }: DashboardProps) {
             <Goals goals={goals} />
           </div>
         ) : null}
+
+        <div className="lg:col-span-12">
+          <AiRecommendations />
+        </div>
       </div>
     </>
   );
