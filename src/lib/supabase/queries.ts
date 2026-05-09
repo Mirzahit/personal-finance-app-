@@ -213,6 +213,32 @@ export async function getPermissionsData(): Promise<PermissionsData> {
   };
 }
 
+export async function getEnvelopeDetail(envelopeId: string): Promise<{
+  envelope: DbEnvelope | null;
+  transactions: DbTx[];
+} | null> {
+  const supabase = await createClient();
+  const { data: envelope } = await supabase
+    .from("envelopes")
+    .select(
+      "id, name, icon_name, account_id, currency, limit_minor, spent_minor, shared_with_spouse"
+    )
+    .eq("id", envelopeId)
+    .maybeSingle<DbEnvelope>();
+  if (!envelope) return null;
+
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select(
+      "id, title, account_id, envelope_id, user_id, amount_minor, currency, type, occurred_at, from_leila"
+    )
+    .eq("envelope_id", envelopeId)
+    .order("occurred_at", { ascending: false })
+    .returns<DbTx[]>();
+
+  return { envelope, transactions: transactions ?? [] };
+}
+
 export async function getMySpouseRequests(): Promise<DbLeilaRequest[]> {
   const supabase = await createClient();
   const { data } = await supabase

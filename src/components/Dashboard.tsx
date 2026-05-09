@@ -353,33 +353,40 @@ function Envelopes({ envelopes }: { envelopes: DbEnvelope[] }) {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.4, delay: 0.15 + i * 0.05, ease: "easeOut" }}
-              className="rounded-[18px] border border-border-default bg-bg-elevated px-4 py-3.5"
             >
-              <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft">
-                  <Icon className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="text-sm font-medium">{e.name}</p>
-                    <p className="text-sm tabular-nums text-text-secondary">
-                      <span className={over ? "text-expense font-semibold" : ""}>
-                        {formatMoney(e.spent_minor, e.currency)}
-                      </span>
-                      <span className="text-text-muted"> / {formatMoney(e.limit_minor, e.currency)}</span>
-                    </p>
+              <Link
+                href={`/envelopes/${e.id}`}
+                className="block rounded-[18px] border border-border-default bg-bg-elevated px-4 py-3.5 transition-colors hover:bg-bg-card"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft">
+                    <Icon className="h-4 w-4 text-text-primary" strokeWidth={1.75} />
                   </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg-card">
-                    <div
-                      className="h-full rounded-full transition-[width] duration-700"
-                      style={{
-                        width: `${ratio * 100}%`,
-                        background: over ? "var(--expense)" : "var(--accent)",
-                      }}
-                    />
+                  <div className="flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-sm font-medium">{e.name}</p>
+                      <p className="text-sm tabular-nums text-text-secondary">
+                        <span className={over ? "text-expense font-semibold" : ""}>
+                          {formatMoney(e.spent_minor, e.currency)}
+                        </span>
+                        <span className="text-text-muted">
+                          {" "}
+                          / {formatMoney(e.limit_minor, e.currency)}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-bg-card">
+                      <div
+                        className="h-full rounded-full transition-[width] duration-700"
+                        style={{
+                          width: `${ratio * 100}%`,
+                          background: over ? "var(--expense)" : "var(--accent)",
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             </motion.div>
           );
         })}

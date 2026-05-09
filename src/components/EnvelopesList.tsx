@@ -111,63 +111,65 @@ export function EnvelopesList({
                   visible: { opacity: 1, y: 0 },
                 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="rounded-[18px] border border-border-default bg-bg-elevated px-5 py-4"
+                className="relative rounded-[18px] border border-border-default bg-bg-elevated transition-colors hover:bg-bg-card"
               >
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-accent-soft">
-                    <Icon className="h-5 w-5 text-text-primary" strokeWidth={1.75} />
+                <Link href={`/envelopes/${e.id}`} className="block px-5 py-4">
+                  <div className="flex items-center gap-3 pr-10">
+                    <div className="grid h-10 w-10 place-items-center rounded-full bg-accent-soft">
+                      <Icon className="h-5 w-5 text-text-primary" strokeWidth={1.75} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm font-medium">{e.name}</p>
+                        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                          {e.currency}
+                        </span>
+                      </div>
+                      {acc ? (
+                        <p className="text-xs text-text-muted">
+                          {acc.name} · {acc.bank}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-text-muted">без привязки к счёту</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-sm font-medium">{e.name}</p>
-                      <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                        {e.currency}
+
+                  <div className="mt-4">
+                    <div className="flex items-baseline justify-between text-sm tabular-nums">
+                      <span className={over ? "text-expense font-semibold" : ""}>
+                        {formatMoney(e.spent_minor, e.currency)}
+                      </span>
+                      <span className="text-text-muted">
+                        из {formatMoney(e.limit_minor, e.currency)}
                       </span>
                     </div>
-                    {acc ? (
-                      <p className="text-xs text-text-muted">
-                        {acc.name} · {acc.bank}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-text-muted">без привязки к счёту</p>
-                    )}
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-bg-card">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${ratio * 100}%` }}
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        className="h-full rounded-full"
+                        style={{ background: over ? "var(--expense)" : "var(--accent)" }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-text-muted">
+                      {over
+                        ? `Перерасход на ${formatMoney(e.spent_minor - e.limit_minor, e.currency)}`
+                        : `Осталось ${formatMoney(e.limit_minor - e.spent_minor, e.currency)}`}
+                    </p>
                   </div>
-                  <form action={deleteEnvelopeAction}>
-                    <input type="hidden" name="id" value={e.id} />
-                    <button
-                      type="submit"
-                      aria-label="Удалить конверт"
-                      className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-bg-card hover:text-expense"
-                    >
-                      <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                    </button>
-                  </form>
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-baseline justify-between text-sm tabular-nums">
-                    <span className={over ? "text-expense font-semibold" : ""}>
-                      {formatMoney(e.spent_minor, e.currency)}
-                    </span>
-                    <span className="text-text-muted">
-                      из {formatMoney(e.limit_minor, e.currency)}
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-bg-card">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${ratio * 100}%` }}
-                      transition={{ duration: 0.7, ease: "easeOut" }}
-                      className="h-full rounded-full"
-                      style={{ background: over ? "var(--expense)" : "var(--accent)" }}
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-text-muted">
-                    {over
-                      ? `Перерасход на ${formatMoney(e.spent_minor - e.limit_minor, e.currency)}`
-                      : `Осталось ${formatMoney(e.limit_minor - e.spent_minor, e.currency)}`}
-                  </p>
-                </div>
+                </Link>
+                <form action={deleteEnvelopeAction} className="absolute right-3 top-3">
+                  <input type="hidden" name="id" value={e.id} />
+                  <button
+                    type="submit"
+                    aria-label="Удалить конверт"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-text-muted transition-colors hover:bg-bg-base hover:text-expense"
+                  >
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                </form>
               </motion.div>
             );
           })}
