@@ -3,14 +3,19 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 
+function readSupabaseEnv() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return { url, key };
+}
+
 export async function proxy(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { url: supabaseUrl, key: supabaseKey } = readSupabaseEnv();
 
   if (!supabaseUrl || !supabaseKey) {
     console.error(
-      "[proxy] Missing Supabase env vars — passing request through without auth check.",
-      { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey }
+      "[proxy] Missing Supabase env vars. Set SUPABASE_URL and SUPABASE_ANON_KEY in Vercel → Settings → Environment Variables."
     );
     return NextResponse.next({ request });
   }
