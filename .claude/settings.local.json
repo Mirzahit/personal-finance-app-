@@ -16,7 +16,8 @@
       "Bash(curl -sL \"https://personal-finance-app-53re.vercel.app/__diag\")",
       "Bash(npx vercel *)",
       "Bash(curl -sL -o /tmp/diag.html -w \"HTTP %{http_code}\\\\n\" \"https://personal-finance-app-53re.vercel.app/login\")",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(curl *)"
     ]
   }
 }

@@ -1,11 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
   BookOpen,
   Car,
+  ChevronDown,
   Gift,
   HandCoins,
   Heart,
@@ -404,7 +406,64 @@ function Envelopes({ envelopes }: { envelopes: DbEnvelope[] }) {
   );
 }
 
+type DayGroup = {
+  key: string;
+  label: string;
+  txs: DbTx[];
+  income: Record<"KGS" | "KZT", number>;
+  expense: Record<"KGS" | "KZT", number>;
+};
+
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  if (sameDay(d, now)) return "Сегодня";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, yesterday)) return "Вчера";
+  return d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    weekday: "short",
+  });
+}
+
+function groupTxsByDay(txs: DbTx[]): DayGroup[] {
+  const map = new Map<string, DayGroup>();
+  for (const t of txs) {
+    const key = dayKey(t.occurred_at);
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        key,
+        label: dayLabel(t.occurred_at),
+        txs: [],
+        income: { KGS: 0, KZT: 0 },
+        expense: { KGS: 0, KZT: 0 },
+      };
+      map.set(key, g);
+    }
+    g.txs.push(t);
+    if (t.type === "income") g.income[t.currency] += t.amount_minor;
+    else if (t.type === "expense") g.expense[t.currency] += t.amount_minor;
+  }
+  return Array.from(map.values());
+}
+
 function TodayFeed({ txs, accounts }: { txs: DbTx[]; accounts: DbAccount[] }) {
+  const groups = groupTxsByDay(txs);
+  const initialExpanded = groups.length > 0 ? new Set([groups[0].key]) : new Set<string>();
+  const [expanded, setExpanded] = useState<Set<string>>(initialExpanded);
+
   if (txs.length === 0) {
     return (
       <section className="h-full">
@@ -417,69 +476,149 @@ function TodayFeed({ txs, accounts }: { txs: DbTx[]; accounts: DbAccount[] }) {
       </section>
     );
   }
+
   const accMap = new Map(accounts.map((a) => [a.id, a]));
-  const visible = txs.slice(0, 5);
-  const hidden = txs.length - visible.length;
+  const visibleGroups = groups.slice(0, 4);
+  const hiddenDays = groups.length - visibleGroups.length;
+
+  const toggle = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   return (
     <section className="h-full">
       <SectionHeader
-        title="Последние операции"
+        title="Операции по дням"
         action={
           <Link
             href="/analytics"
             className="rounded-full border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-card"
           >
-            Все {hidden > 0 ? `(+${hidden})` : ""}
+            Все {hiddenDays > 0 ? `(+${hiddenDays} ${hiddenDays === 1 ? "день" : "дн.)"}` : ""}
           </Link>
         }
       />
-      <div className="overflow-hidden rounded-[18px] border border-border-default bg-bg-elevated divide-y divide-border-subtle">
-        {visible.map((t, i) => {
-          const Icon = ShoppingBag;
-          const acc = accMap.get(t.account_id);
-          const time = new Date(t.occurred_at).toLocaleTimeString("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+      <div className="flex flex-col gap-2.5">
+        {visibleGroups.map((g, gi) => {
+          const isOpen = expanded.has(g.key);
+          const expenseParts: string[] = [];
+          if (g.expense.KGS > 0) expenseParts.push(formatMoney(g.expense.KGS, "KGS"));
+          if (g.expense.KZT > 0) expenseParts.push(formatMoney(g.expense.KZT, "KZT"));
+          const incomeParts: string[] = [];
+          if (g.income.KGS > 0) incomeParts.push(formatMoney(g.income.KGS, "KGS"));
+          if (g.income.KZT > 0) incomeParts.push(formatMoney(g.income.KZT, "KZT"));
+
           return (
             <motion.div
-              key={t.id}
+              key={g.key}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i < 5 ? 0.1 + i * 0.04 : 0, ease: "easeOut" }}
+              transition={{ duration: 0.35, delay: 0.1 + gi * 0.04, ease: "easeOut" }}
+              className="overflow-hidden rounded-[18px] border border-border-default bg-bg-elevated"
             >
-              <Link
-                href={`/transactions/${t.id}/edit`}
-                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-card lg:px-5 lg:py-4"
+              <button
+                type="button"
+                onClick={() => toggle(g.key)}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-bg-card lg:px-5"
               >
-                <div
-                  className="grid h-9 w-9 place-items-center rounded-full"
-                  style={{
-                    background:
-                      t.type === "income" ? "rgba(63,179,127,0.14)" : "rgba(229,99,77,0.12)",
-                  }}
-                >
-                  <Icon
-                    className="h-4 w-4"
-                    strokeWidth={1.75}
-                    style={{ color: t.type === "income" ? "var(--income)" : "var(--expense)" }}
-                  />
-                </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{t.title}</p>
-                  <p className="text-xs text-text-muted">
-                    {acc?.name ?? "счёт"} · {time}
-                    {t.from_leila ? " · от Лейлы" : ""}
+                  <p className="text-sm font-medium">{g.label}</p>
+                  <p className="mt-0.5 text-xs text-text-muted">
+                    {g.txs.length} {g.txs.length === 1 ? "операция" : "операций"}
                   </p>
                 </div>
-                <p
-                  className="text-sm font-semibold tabular-nums"
-                  style={{ color: t.type === "income" ? "var(--income)" : "var(--text-primary)" }}
-                >
-                  {t.type === "income" ? "+" : "−"}
-                  {formatMoney(t.amount_minor, t.currency)}
-                </p>
-              </Link>
+                <div className="text-right">
+                  {expenseParts.length > 0 ? (
+                    <p className="text-sm font-semibold tabular-nums text-text-primary">
+                      −{expenseParts.join(" · ")}
+                    </p>
+                  ) : null}
+                  {incomeParts.length > 0 ? (
+                    <p
+                      className="text-xs font-semibold tabular-nums"
+                      style={{ color: "var(--income)" }}
+                    >
+                      +{incomeParts.join(" · ")}
+                    </p>
+                  ) : null}
+                </div>
+                <ChevronDown
+                  className="h-4 w-4 text-text-muted transition-transform duration-300"
+                  strokeWidth={2}
+                  style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}
+                />
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen ? (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.28, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="divide-y divide-border-subtle border-t border-border-subtle">
+                      {g.txs.map((t) => {
+                        const acc = accMap.get(t.account_id);
+                        const time = new Date(t.occurred_at).toLocaleTimeString("ru-RU", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        return (
+                          <Link
+                            key={t.id}
+                            href={`/transactions/${t.id}/edit`}
+                            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-bg-card lg:px-5"
+                          >
+                            <div
+                              className="grid h-9 w-9 place-items-center rounded-full"
+                              style={{
+                                background:
+                                  t.type === "income"
+                                    ? "rgba(63,179,127,0.14)"
+                                    : "rgba(229,99,77,0.12)",
+                              }}
+                            >
+                              <ShoppingBag
+                                className="h-4 w-4"
+                                strokeWidth={1.75}
+                                style={{
+                                  color:
+                                    t.type === "income" ? "var(--income)" : "var(--expense)",
+                                }}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{t.title}</p>
+                              <p className="text-xs text-text-muted">
+                                {acc?.name ?? "счёт"} · {time}
+                                {t.from_leila ? " · от Лейлы" : ""}
+                              </p>
+                            </div>
+                            <p
+                              className="text-sm font-semibold tabular-nums"
+                              style={{
+                                color:
+                                  t.type === "income"
+                                    ? "var(--income)"
+                                    : "var(--text-primary)",
+                              }}
+                            >
+                              {t.type === "income" ? "+" : "−"}
+                              {formatMoney(t.amount_minor, t.currency)}
+                            </p>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </motion.div>
           );
         })}
