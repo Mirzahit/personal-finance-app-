@@ -21,11 +21,23 @@ export async function addTransactionAction(
   const envelopeId = envelopeIdRaw === "" ? null : envelopeIdRaw;
   const typeRaw = String(formData.get("type") ?? "expense");
   const type: "income" | "expense" = typeRaw === "income" ? "income" : "expense";
+  const occurredAtRaw = String(formData.get("occurred_at") ?? "").trim();
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+  const notes = notesRaw === "" ? null : notesRaw;
 
   if (!title) return { error: "Введи описание" };
   const amount = Number(amountStr);
   if (!Number.isFinite(amount) || amount <= 0) return { error: "Сумма должна быть больше 0" };
   if (!accountId) return { error: "Выбери счёт" };
+
+  let occurredAt: string;
+  if (occurredAtRaw) {
+    const d = new Date(occurredAtRaw);
+    if (Number.isNaN(d.getTime())) return { error: "Некорректная дата" };
+    occurredAt = d.toISOString();
+  } else {
+    occurredAt = new Date().toISOString();
+  }
 
   const supabase = await createClient();
   const {
@@ -59,7 +71,8 @@ export async function addTransactionAction(
     amount_minor: amountMinor,
     currency: account.currency,
     type,
-    occurred_at: new Date().toISOString(),
+    occurred_at: occurredAt,
+    notes,
   });
   if (txErr) return { error: txErr.message };
 

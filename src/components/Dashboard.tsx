@@ -418,11 +418,23 @@ function TodayFeed({ txs, accounts }: { txs: DbTx[]; accounts: DbAccount[] }) {
     );
   }
   const accMap = new Map(accounts.map((a) => [a.id, a]));
+  const visible = txs.slice(0, 5);
+  const hidden = txs.length - visible.length;
   return (
     <section className="h-full">
-      <SectionHeader title="Операции" hint={`${txs.length}`} />
+      <SectionHeader
+        title="Последние операции"
+        action={
+          <Link
+            href="/analytics"
+            className="rounded-full border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-card"
+          >
+            Все {hidden > 0 ? `(+${hidden})` : ""}
+          </Link>
+        }
+      />
       <div className="overflow-hidden rounded-[18px] border border-border-default bg-bg-elevated divide-y divide-border-subtle">
-        {txs.map((t, i) => {
+        {visible.map((t, i) => {
           const Icon = ShoppingBag;
           const acc = accMap.get(t.account_id);
           const time = new Date(t.occurred_at).toLocaleTimeString("ru-RU", {

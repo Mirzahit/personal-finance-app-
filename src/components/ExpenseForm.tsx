@@ -14,6 +14,39 @@ function formatMoney(amount: number, currency: "KGS" | "KZT") {
   return `${new Intl.NumberFormat("ru-RU").format(amount)} ${currency === "KGS" ? "с" : "₸"}`;
 }
 
+function pad(n: number) {
+  return n < 10 ? `0${n}` : String(n);
+}
+
+function nowLocalForInput(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatOccurred(localInput: string): string {
+  const d = new Date(localInput);
+  if (Number.isNaN(d.getTime())) return "Сейчас";
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    d.getFullYear() === yesterday.getFullYear() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getDate() === yesterday.getDate();
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (sameDay) return `Сегодня, ${time}`;
+  if (isYesterday) return `Вчера, ${time}`;
+  const dateStr = d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+  });
+  return `${dateStr}, ${time}`;
+}
+
 export function ExpenseForm({
   accounts,
   envelopes,
@@ -28,6 +61,9 @@ export function ExpenseForm({
   const [amount, setAmount] = useState<string>("");
   const [title, setTitle] = useState<string>("");
   const [envelopeId, setEnvelopeId] = useState<string>("");
+  const [occurredAt, setOccurredAt] = useState<string>(nowLocalForInput());
+  const [notes, setNotes] = useState<string>("");
+  const [dateExpanded, setDateExpanded] = useState<boolean>(false);
 
   const selectedAccount = accounts.find((a) => a.id === accountId)!;
   const currency = selectedAccount.currency;
@@ -47,6 +83,8 @@ export function ExpenseForm({
       <input type="hidden" name="envelope_id" value={envelopeId} />
       <input type="hidden" name="title" value={title} />
       <input type="hidden" name="amount" value={amount} />
+      <input type="hidden" name="occurred_at" value={occurredAt} />
+      <input type="hidden" name="notes" value={notes} />
 
       <div className="grid grid-cols-2 gap-2 rounded-full border border-border-default bg-bg-elevated p-1">
         <button
@@ -156,6 +194,57 @@ export function ExpenseForm({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Например: Globus, бензин, кафе…"
           className="w-full rounded-[16px] border border-border-default bg-bg-elevated px-4 py-3.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+        />
+      </Section>
+
+      <Section title="Когда">
+        <div className="rounded-[16px] border border-border-default bg-bg-elevated">
+          <button
+            type="button"
+            onClick={() => setDateExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-4 py-3.5 text-left"
+          >
+            <span className="text-sm text-text-primary">
+              {formatOccurred(occurredAt)}
+            </span>
+            <span className="text-xs text-text-secondary">
+              {dateExpanded ? "Свернуть" : "Изменить"}
+            </span>
+          </button>
+          {dateExpanded ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="overflow-hidden border-t border-border-subtle"
+            >
+              <div className="flex items-center gap-2 px-4 py-3">
+                <input
+                  type="datetime-local"
+                  value={occurredAt}
+                  onChange={(e) => setOccurredAt(e.target.value)}
+                  className="flex-1 rounded-[12px] border border-border-default bg-bg-base/40 px-3 py-2.5 text-sm text-text-primary focus:border-accent focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setOccurredAt(nowLocalForInput())}
+                  className="rounded-full border border-border-default px-3 py-2 text-xs text-text-secondary transition-colors hover:bg-bg-card"
+                >
+                  Сейчас
+                </button>
+              </div>
+            </motion.div>
+          ) : null}
+        </div>
+      </Section>
+
+      <Section title="Заметка" hint="необязательно">
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Любые детали — место, повод, что купил…"
+          rows={3}
+          className="w-full resize-none rounded-[16px] border border-border-default bg-bg-elevated px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
         />
       </Section>
 
